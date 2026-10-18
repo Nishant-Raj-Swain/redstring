@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Red String</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root{
+  --walnut:#241a14; --walnut-2:#33261d; --walnut-3:#46352a;
+  --paper:#f4ecd8; --paper-edge:#dccfa9; --ink:#1f1a15; --ink-soft:#6a5e4f;
+  --cork:#9b7448; --frame:#3b2717;
+  --string:#c4281d; --string-dark:#7d150e; --twine:#efe3c4;
+  --scout:#f3d567; --historian:#b9dfae; --skeptic:#f0b3ab; --narrator:#aac3e6;
+  --focus:#ffd86b;
+  --type:"Special Elite","Courier New",monospace; --hand:"Caveat","Segoe Print",cursive;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--walnut);color:var(--paper);font-family:var(--type);font-size:15px;display:grid;grid-template-rows:auto 1fr;overflow:hidden}
+button,select,input{font:inherit;color:inherit}
+button:focus-visible,select:focus-visible,input:focus-visible,.card:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+/* top bar */
+header{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 16px;background:var(--walnut-2);border-bottom:2px solid #000}
+.brand{display:flex;align-items:center;gap:10px;font-size:24px;letter-spacing:.5px;margin-right:6px}
+.brand svg{width:26px;height:26px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex:1}
+.btn{background:var(--paper);color:var(--ink);border:0;padding:7px 13px;border-radius:2px;cursor:pointer;box-shadow:2px 3px 0 rgba(0,0,0,.55);transition:transform .12s,box-shadow .12s}
+.btn:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:3px 4px 0 rgba(0,0,0,.55)}
+.btn:active:not(:disabled){transform:translate(1px,1px);box-shadow:1px 1px 0 rgba(0,0,0,.55)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--string);color:#fff6e6}
+#scenario{max-width:300px}
+select,input[type=text]{background:var(--walnut);border:1px solid var(--walnut-3);color:var(--paper);padding:6px 8px;border-radius:2px}
+label.tog{display:flex;gap:6px;align-items:center;color:#d9ccb2;cursor:pointer;user-select:none}
+.spacer{flex:1}
+#resolveForm{display:none;gap:6px;align-items:center;background:var(--walnut);padding:6px 8px;border:1px solid var(--walnut-3)}
+#resolveForm.open{display:flex}
+
+/* layout */
+main{display:grid;grid-template-columns:minmax(0,1fr) 390px;min-height:0}
+#boardWrap{position:relative;min-height:0;border:14px solid var(--frame);border-image:none;box-shadow:inset 0 0 40px rgba(0,0,0,.7),inset 0 0 0 2px #1a0f08}
+#viewport{position:absolute;inset:0;overflow:auto;
+  background-color:var(--cork);
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' seed='4'/><feColorMatrix values='0 0 0 0 .22  0 0 0 0 .13  0 0 0 0 .04  0 0 0 .6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    radial-gradient(ellipse at 50% 40%,rgba(255,226,170,.28),rgba(40,20,5,.45) 100%)}
+#sizer{position:relative;margin:0 auto}
+#stage{position:absolute;left:0;top:0;transform-origin:0 0}
+#strings{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:1}
+#strings path{fill:none;stroke-linecap:round;filter:drop-shadow(1px 3px 2px rgba(0,0,0,.5))}
+#strings path.red{stroke:var(--string);stroke-width:3.2}
+#strings path.twine{stroke:var(--twine);stroke-width:1.6;opacity:.8}
+#strings path.black{stroke:#17110c;stroke-width:3}
+#strings path.dim{opacity:.22}
+#strings text{font:700 26px var(--type);fill:#17110c;paint-order:stroke;stroke:#f4ecd8;stroke-width:4px;text-anchor:middle}
+
+/* cards */
+.card{position:absolute;z-index:2;color:var(--ink);padding:12px 14px 12px;box-shadow:2px 5px 9px rgba(0,0,0,.5);cursor:pointer;background:var(--paper)}
+.card .pin{position:absolute;left:50%;top:-7px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff8a7d,var(--string) 45%,var(--string-dark));box-shadow:1px 3px 3px rgba(0,0,0,.6);z-index:3}
+.card h3{margin:0 0 4px;font-weight:400;font-size:18px;line-height:1.15}
+.card p{margin:0;font-size:13px;line-height:1.35;color:var(--ink-soft)}
+.card.dim{filter:grayscale(.85) brightness(.88)}
+.card.hl{outline:3px solid var(--focus);outline-offset:3px}
+.t-incident{width:230px;background:var(--paper);border-top:26px solid #d6c593}
+.t-incident h3{font-size:26px}
+.t-alert{width:230px;background:#f6dcd6;border:2px dashed var(--string)}
+.t-alert h3{color:var(--string-dark);font-size:16px}
+.t-service{width:190px;padding:9px 12px;background:#e7cf9d;border-radius:3px 12px 12px 3px}
+.t-service h3{font-size:16px}
+.t-service.failing{box-shadow:0 0 0 3px var(--string),2px 5px 9px rgba(0,0,0,.5)}
+.t-deploy{width:210px;background:#efe6cc}
+.t-commit{width:210px;background:#fbf6e6;border:1px solid var(--paper-edge)}
+.t-commit h3{font-size:14px}
+.t-person{width:150px;background:#fbf7ec;padding:8px 8px 10px;text-align:center}
+.t-person .photo{height:62px;margin-bottom:6px;background:#8e8272;color:#f4ecd8;display:grid;place-items:center;font:700 34px var(--hand)}
+.t-person h3{font-size:15px}
+.t-hypothesis{width:250px;padding:14px 14px 12px;background:repeating-linear-gradient(#fbf6e6 0 25px,#cfd9e6 25px 26px) 0 36px/100% 100% no-repeat,#fbf6e6;border-left:3px solid #d99}
+.t-hypothesis h3{font-size:20px}
+.t-hypothesis p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.t-hypothesis .meta{margin-top:8px;font-size:12px;color:var(--ink-soft)}
+.bar{height:8px;background:#d8cdb2;margin-top:8px;border-radius:1px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--string)}
+.conf{display:flex;justify-content:space-between;font-size:13px;margin-top:6px}
+.tape{position:absolute;right:14px;top:-13px;z-index:4;padding:2px 12px;background:rgba(232,217,168,.95);transform:rotate(3deg);font-size:12px;box-shadow:1px 2px 3px rgba(0,0,0,.35)}
+.stamp{position:absolute;left:50%;top:46%;z-index:4;pointer-events:none;border:4px solid var(--string);color:var(--string);padding:2px 12px;font:700 28px var(--type);transform:translate(-50%,-50%) rotate(-12deg);background:rgba(244,236,216,.55);white-space:nowrap}
+.stamp.ok{border-color:#2a6b3a;color:#2a6b3a}
+.t-evidence{width:250px;padding:14px 14px 12px;font-family:var(--hand);font-size:21px;line-height:1.05;background:var(--scout)}
+.t-evidence.Historian{background:var(--historian)} .t-evidence.Skeptic{background:var(--skeptic)} .t-evidence.contradicts{background:var(--skeptic)}
+.t-evidence .who{display:block;font:12px var(--type);color:rgba(31,26,21,.65);margin-bottom:4px}
+.t-evidence .txt{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.t-past{width:230px;background:#d6c593;border-radius:2px 14px 2px 2px}
+.t-past h3{font-size:17px}
+
+/* empty state */
+#empty{position:absolute;inset:0;display:grid;place-items:center;z-index:5;pointer-events:none}
+#empty .note{pointer-events:auto;max-width:360px;background:var(--paper);color:var(--ink);padding:26px 26px 22px;transform:rotate(-2.2deg);box-shadow:3px 8px 16px rgba(0,0,0,.55);position:relative}
+#empty .note::before{content:"";position:absolute;left:50%;top:-8px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff8a7d,var(--string) 45%,var(--string-dark));box-shadow:1px 3px 3px rgba(0,0,0,.6)}
+#empty h2{margin:0 0 8px;font-weight:400;font-size:26px}
+#empty p{margin:0 0 16px;color:var(--ink-soft);line-height:1.4}
+
+/* sidebar */
+aside{background:var(--walnut);display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);min-height:0;min-width:0;border-left:2px solid #000}
+.panel{padding:14px 16px;border-bottom:1px solid var(--walnut-3)}
+.panel h2{margin:0 0 8px;font-weight:400;font-size:17px;color:#d9ccb2}
+#clockRow{display:flex;align-items:baseline;gap:12px}
+#clock{font-size:46px;line-height:1;letter-spacing:1px;min-width:150px}
+#clock.run{color:#ff8a7d}
+#caseTitle{font-size:17px;margin:0 0 4px}
+.sub{color:#b8aa91;font-size:13px;line-height:1.4}
+#compare{margin-top:10px;font-size:15px;display:none}
+#compare b{color:#ff8a7d;font-weight:400;font-size:24px}
+#runs{margin:8px 0 0;padding:0;list-style:none;font-size:13px;color:#b8aa91}
+#runs li{display:flex;justify-content:space-between;padding:2px 0}
+#answerBox{overflow-wrap:anywhere;background:var(--paper);color:var(--ink);padding:12px 14px;line-height:1.5;font-size:14px;min-height:56px;box-shadow:2px 4px 0 rgba(0,0,0,.5)}
+#answerBox.empty{background:transparent;color:#9b8d76;box-shadow:none;padding:0}
+.ref{font:inherit;background:#f0d9a0;border:0;border-bottom:2px solid var(--string);padding:0 3px;cursor:pointer;color:var(--ink)}
+.ref:hover{background:#ffe8a8}
+#logPanel{display:flex;flex-direction:column;min-height:0;padding-bottom:0;border-bottom:0}
+#log{overflow:auto;flex:1;padding-bottom:14px;font-size:13px;line-height:1.4}
+.row{overflow-wrap:anywhere;padding:5px 0 5px 10px;border-left:4px solid var(--walnut-3);margin-bottom:3px;cursor:default}
+.row.res{cursor:pointer}
+.row.res:hover{background:var(--walnut-2)}
+.row .who{display:inline-block;min-width:74px;color:#d9ccb2}
+.row .w{color:#ff8a7d}
+.row.phase{border-left-color:transparent;color:#ff8a7d;margin-top:8px}
+.row.err{color:#ffb4a8}
+.row.text{color:#e9dfc9}
+
+/* drawer */
+#drawer{position:absolute;left:0;right:0;bottom:0;z-index:20;background:var(--walnut);color:var(--paper);border-top:3px solid var(--string);max-height:46%;overflow:auto;transform:translateY(130%);visibility:hidden;padding:14px 18px 18px;box-shadow:0 -8px 24px rgba(0,0,0,.55)}
+#drawer h3{margin:0 40px 6px 0;font-weight:400;font-size:19px}
+#drawer .close{position:absolute;right:12px;top:10px;background:none;border:0;font-size:26px;cursor:pointer;color:var(--paper)}
+#drawer pre{margin:8px 0 0;padding:10px 12px;background:#120c08;color:#f1e6cd;overflow:auto;font:13px/1.45 "Courier New",monospace;white-space:pre-wrap}
+#drawer .k{color:#b8aa91;font-size:13px;margin-top:10px}
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:30;background:var(--string);color:#fff6e6;padding:9px 16px;box-shadow:2px 4px 0 rgba(0,0,0,.5);display:none;max-width:70%}
+
+@media (max-width:1000px){
+  body{overflow:auto;display:block}
+  main{grid-template-columns:1fr;grid-template-rows:70vh auto}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="#c4281d"/><circle cx="10" cy="9.5" r="2.2" fill="#ff9f94"/><path d="M12 19 C14 26 22 26 28 29" stroke="#c4281d" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
+    Red String
+  </div>
+  <div class="controls">
+    <select id="scenario" aria-label="Incident to fire"></select>
+    <button class="btn" id="fire">Fire alert</button>
+    <button class="btn primary" id="run" disabled>Run the agents</button>
+    <label class="tog"><input type="checkbox" id="cold"> Memory off</label>
+    <label class="tog"><input type="checkbox" id="sim"> Simulated agents</label>
+    <span class="spacer"></span>
+    <button class="btn" id="resolveBtn" disabled>Mark resolved</button>
+    <form id="resolveForm">
+      <select id="who" aria-label="Who fixed it"></select>
+      <input type="text" id="fixText" placeholder="What fixed it" size="26">
+      <button class="btn primary" type="submit">Save to memory</button>
+    </form>
+    <button class="btn" id="clear">Clear board</button>
+  </div>
+</header>
+
+<main>
+  <section id="boardWrap" aria-label="Investigation board">
+    <div id="viewport"><div id="sizer"><div id="stage"><svg id="strings"></svg></div></div></div>
+    <div id="empty"><div class="note">
+      <h2>No case on the board</h2>
+      <p>Fire an alert and three agents will start pinning what they find. Every string is a real edge in the graph.</p>
+      <button class="btn primary" id="emptyFire">Fire the first alert</button>
+    </div></div>
+    <div id="drawer" role="dialog" aria-label="Details"><button class="close" aria-label="Close">&times;</button><div id="drawerBody"></div></div>
+    <div id="toast" role="alert"></div>
+  </section>
+
+  <aside>
+    <div class="panel">
+      <div id="clockRow"><div id="clock" aria-live="off">0:00.0</div><div class="sub" id="clockNote">Time to an answer</div></div>
+      <div id="compare"></div>
+      <ul id="runs"></ul>
+    </div>
+    <div class="panel">
+      <h2 id="caseTitle">The answer</h2>
+      <div id="answerBox" class="empty" aria-live="polite">The Narrator's explanation will appear here, with every id linked to its card.</div>
+    </div>
+    <div class="panel" id="logPanel">
+      <h2>What the agents did</h2>
+      <div id="log"></div>
+    </div>
+  </aside>
+</main>
+
+<script src="/vendor/gsap.min.js"></script>
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const D = (x) => (RM ? 0 : x);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const mmss = (ms) => { const s = ms / 1000; return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`; };
+const AGENT_COLOR = { Scout: "#e0b92c", Historian: "#5fa65a", Skeptic: "#c9564a", Narrator: "#5a7fb5", System: "#8a7a68" };
+
+let STAGE_W = 1270; const COLX = [24, 268, 486, 722, 990, 1262], TOP = 44, GAP = 16;
+const COL = { incident: 0, alert: 0, service: 1, deploy: 2, commit: 2, person: 2, hypothesis: 3, evidence: 4, past: 5 };
+const RED = new Set(["about", "supports", "depends_on", "implicates"]);
+
+const S = { incident: null, nodes: new Map(), edges: new Map(), colY: [], snap: null, running: false, startAt: 0, timer: null,
+            loaded: false, answerShown: "", cfg: null, refreshing: false, again: false, stageH: 1120, pending: new Map() };
+const stage = $("#stage"), strings = $("#strings"), NS = "http://www.w3.org/2000/svg";
+
+/* ---------------- board ---------------- */
+function rotationFor(id) { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) | 0; return ((h % 50) / 10 - 2.5) * (id.startsWith("ev:") ? 1.4 : 0.8); }
+
+function cardHTML(n) {
+  const d = n.data || {};
+  switch (n.type) {
+    case "incident": return `<span class="pin"></span><h3>${esc(n.label)}</h3><p>${esc(n.sub)}</p>`;
+    case "alert": return `<span class="pin"></span><h3>${esc(n.label)}</h3><p>${esc(n.sub)}</p>`;
+    case "service": return `<span class="pin"></span><h3>${esc(n.label)}</h3>${n.sub ? `<p>${esc(n.sub)}</p>` : ""}`;
+    case "deploy": return `<span class="pin"></span><h3>Deploy ${esc(n.label)}</h3><p>${esc(n.sub)}</p>`;
+    case "commit": return `<span class="pin"></span><h3>${esc(n.label)}</h3><p>${esc(n.sub)}</p>`;
+    case "person": return `<span class="pin"></span><div class="photo">${esc(n.label.split(" ").map((w) => w[0]).join(""))}</div><h3>${esc(n.label)}</h3><p>${esc(n.sub)}</p>`;
+    case "past": return `<span class="pin"></span><h3>Past case ${esc(n.label)}</h3><p>${esc(n.sub)}</p>`;
+    case "hypothesis": return `<span class="pin"></span><h3>${esc(n.label)}</h3><p>${esc(n.sub)}</p>
+      <div class="conf"><span>Confidence</span><span class="pct">0%</span></div><div class="bar"><i></i></div>
+      <div class="meta"></div>`;
+    case "evidence": return `<span class="pin"></span><span class="who">${esc(n.label)}${d.recalled ? " (from memory)" : ""}</span><div class="txt">${esc(n.sub)}</div>`;
+  }
+  return "";
+}
+
+function createCard(n, snap) {
+  const el = document.createElement("div");
+  el.className = `card t-${n.type}` + (n.type === "evidence" ? ` ${n.label} ${n.data?.stance || ""}` : "");
+  if (n.type === "service" && n.label === snap.incident.alertService) el.classList.add("failing");
+  el.id = "n-" + n.id.replace(/[^\w-]/g, "_");
+  el.tabIndex = 0;
+  el.innerHTML = cardHTML(n);
+  el.style.visibility = "hidden";
+  stage.appendChild(el);
+  el.addEventListener("click", () => openNode(n.id));
+  el.addEventListener("keydown", (e) => { if (e.key === "Enter") openNode(n.id); });
+  const rec = { n, el, rot: rotationFor(n.id), w: el.offsetWidth, h: el.offsetHeight, x: 0, y: 0, readyAt: 0, conf: { v: 0 }, stamped: null };
+  return rec;
+}
+
+function colOf(n, snap) {
+  if (n.type === "person" && snap.edges.some((e) => e.from === n.id && e.kind === "fixed_by" || e.to === n.id && e.kind === "fixed_by")) return 5;
+  return COL[n.type] ?? 2;
+}
+
+function place(rec, snap) {
+  const col = colOf(rec.n, snap);
+  const y = S.colY[col] ?? TOP;
+  rec.x = COLX[col]; rec.y = y;
+  S.maxCol = Math.max(S.maxCol || 0, col);
+  S.colY[col] = y + rec.h + GAP + (rec.n.type === "service" ? -4 : 0);
+  rec.el.style.left = rec.x + "px"; rec.el.style.top = rec.y + "px";
+}
+
+function animateIn(rec, delay, instant) {
+  rec.el.style.visibility = "visible";
+  const now = gsap.ticker.time;
+  rec.readyAt = now + (instant ? 0 : delay + 0.45);
+  const pin = rec.el.querySelector(".pin");
+  if (instant || RM) { gsap.set(rec.el, { rotation: rec.rot }); return; }
+  gsap.fromTo(rec.el, { opacity: 0, scale: 0.7, y: -30, rotation: rec.rot + (Math.random() * 14 - 7) },
+    { opacity: 1, scale: 1, y: 0, rotation: rec.rot, duration: 0.55, delay, ease: "back.out(1.8)" });
+  if (pin) gsap.fromTo(pin, { scale: 2.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.22, delay: delay + 0.12, ease: "power4.in" });
+}
+
+const anchor = (rec) => ({ x: rec.x + rec.w / 2, y: rec.y + 3 });
+function pathD(a, b, sag) { const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 + sag; return `M${a.x},${a.y} Q${mx},${my} ${b.x},${b.y}`; }
+
+function createEdge(e, k, instant) {
+  const A = S.nodes.get(e.from), B = S.nodes.get(e.to);
+  if (!A || !B) return;
+  const a = anchor(A), b = anchor(B), dist = Math.hypot(a.x - b.x, a.y - b.y);
+  const cls = e.kind === "contradicts" ? "black" : RED.has(e.kind) ? "red" : "twine";
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("class", cls);
+  strings.appendChild(path);
+  const rec = { e, path, a, b, sag: 16 + dist * 0.09, mark: null };
+  S.edges.set(e.id, rec);
+  if (instant || RM) { path.setAttribute("d", pathD(a, b, rec.sag)); addMark(rec); return; }
+  const now = gsap.ticker.time;
+  const delay = Math.max(0, Math.max(A.readyAt, B.readyAt) - now) + 0.12 + k * 0.08;
+  const len = Math.hypot(a.x - b.x, a.y - b.y);
+  const st = { sag: 0 };
+  path.setAttribute("d", pathD(a, b, 0));
+  path.style.strokeDasharray = len + 2; path.style.strokeDashoffset = len + 2;
+  gsap.timeline({ delay })
+    .to(path, { strokeDashoffset: 0, duration: 0.55, ease: "power2.out", onComplete: () => { path.style.strokeDasharray = "none"; } })
+    .to(st, { sag: rec.sag, duration: 1.1, ease: "elastic.out(1,0.3)", onUpdate: () => path.setAttribute("d", pathD(a, b, st.sag)), onComplete: () => addMark(rec) }, "-=0.1");
+}
+function addMark(rec) {
+  if (rec.e.kind !== "contradicts" || rec.mark) return;
+  const t = document.createElementNS(NS, "text");
+  t.textContent = "\u2715"; t.setAttribute("x", (rec.a.x + rec.b.x) / 2); t.setAttribute("y", (rec.a.y + rec.b.y) / 2 + rec.sag / 2 + 9);
+  strings.appendChild(t); rec.mark = t;
+  if (!RM) gsap.from(t, { scale: 3, opacity: 0, transformOrigin: "center", duration: 0.3, ease: "power4.in" });
+}
+
+function updateHypothesis(rec, n, recalled) {
+  const d = n.data, pct = Math.round((d.confidence ?? 0) * 100);
+  const pctEl = rec.el.querySelector(".pct"), bar = rec.el.querySelector(".bar i");
+  gsap.to(rec.conf, { v: pct, duration: D(0.8), ease: "power2.out", onUpdate: () => { pctEl.textContent = Math.round(rec.conf.v) + "%"; bar.style.width = rec.conf.v + "%"; } });
+  rec.el.querySelector(".meta").textContent = d.agents?.length ? `Pinned by ${d.agents.join(", ")}` : "";
+  if (recalled && !rec.el.querySelector(".tape")) { const t = document.createElement("div"); t.className = "tape"; t.textContent = "Recalled from memory"; rec.el.appendChild(t); if (!RM) gsap.from(t, { scale: 0.4, opacity: 0, duration: 0.4, ease: "back.out(2)" }); }
+  const want = d.status === "rejected" ? "Ruled out" : d.status === "confirmed" ? "Root cause" : null;
+  if (want && rec.stamped !== want) {
+    rec.el.querySelector(".stamp")?.remove();
+    const s = document.createElement("div"); s.className = "stamp" + (d.status === "confirmed" ? " ok" : ""); s.textContent = want; rec.el.appendChild(s);
+    rec.el.classList.toggle("dim", d.status === "rejected");
+    if (!RM) { gsap.from(s, { scale: 2.8, opacity: 0, rotation: -35, duration: 0.35, ease: "power4.in" }); if (d.status === "rejected") gsap.fromTo(rec.el, { x: -5 }, { x: 0, duration: 0.5, ease: "elastic.out(1,0.2)", delay: 0.3 }); }
+    rec.stamped = want;
+  }
+}
+
+function render(snap, instant) {
+  $("#empty").style.display = "none";
+  const fresh = [];
+  for (const n of snap.nodes) {
+    const rec = S.nodes.get(n.id);
+    if (!rec) fresh.push(n); else rec.n = n;
+  }
+  fresh.forEach((n, i) => { const rec = createCard(n, snap); S.nodes.set(n.id, rec); place(rec, snap); animateIn(rec, i * 0.14, instant); });
+
+  const recalledHyp = new Set();
+  const evById = new Map(snap.nodes.filter((n) => n.type === "evidence").map((n) => [n.id, n]));
+  for (const e of snap.edges) if ((e.kind === "supports") && evById.get(e.from)?.data?.recalled) recalledHyp.add(e.to);
+  for (const n of snap.nodes) if (n.type === "hypothesis") updateHypothesis(S.nodes.get(n.id), n, recalledHyp.has(n.id));
+
+  let k = 0;
+  for (const e of snap.edges) if (!S.edges.has(e.id)) createEdge(e, k++, instant);
+
+  const rejected = new Set(snap.nodes.filter((n) => n.type === "hypothesis" && n.data.status === "rejected").map((n) => n.id));
+  for (const r of S.edges.values()) r.path.classList.toggle("dim", rejected.has(r.e.to) || rejected.has(r.e.from));
+  fitStage();
+}
+
+function fitStage() {
+  let bottom = 0;
+  for (const r of S.nodes.values()) bottom = Math.max(bottom, r.y + r.h);
+  STAGE_W = (S.maxCol || 0) >= 5 ? 1520 : 1270;
+  S.stageH = Math.max(640, bottom + 50);
+  const vp = $("#viewport"), s = Math.max(0.42, Math.min(vp.clientWidth / STAGE_W, vp.clientHeight / S.stageH, 1));
+  stage.style.width = STAGE_W + "px"; stage.style.height = S.stageH + "px"; stage.style.transform = `scale(${s})`;
+  const sz = $("#sizer"); sz.style.width = STAGE_W * s + "px"; sz.style.height = S.stageH * s + "px";
+}
+addEventListener("resize", fitStage);
+
+function clearBoard() {
+  for (const r of S.nodes.values()) r.el.remove();
+  strings.innerHTML = ""; S.nodes.clear(); S.edges.clear(); S.colY = []; S.maxCol = 0; S.snap = null; S.answerShown = "";
+  $("#empty").style.display = "grid";
+  setAnswer("");
+}
+
+function highlight(id) {
+  const rec = S.nodes.get(id); if (!rec) return;
+  rec.el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: RM ? "auto" : "smooth" });
+  rec.el.classList.add("hl"); setTimeout(() => rec.el.classList.remove("hl"), 1800);
+  if (!RM) gsap.fromTo(rec.el, { scale: 1.12 }, { scale: 1, duration: 0.8, ease: "elastic.out(1,0.4)" });
+  for (const r of S.edges.values()) if (r.e.from === id || r.e.to === id) {
+    const w = parseFloat(getComputedStyle(r.path).strokeWidth) || 3;
+    if (!RM) gsap.fromTo(r.path, { strokeWidth: w * 2.6 }, { strokeWidth: w, duration: 1.4, ease: "power2.out" });
+  }
+}
+
+/* ---------------- data ---------------- */
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+function toast(msg, ms = 6000) { const t = $("#toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(() => (t.style.display = "none"), ms); }
+
+async function refresh(instant = false) {
+  if (!S.incident) return;
+  if (S.refreshing) { S.again = true; return; }
+  S.refreshing = true;
+  try {
+    const snap = await api("/api/snapshot?incident=" + encodeURIComponent(S.incident));
+    if (snap && snap.incident.id === S.incident) { S.snap = snap; render(snap, instant); renderCase(snap); }
+  } catch (e) { console.error(e); }
+  S.refreshing = false;
+  if (S.again) { S.again = false; refresh(); }
+}
+let refreshT; const refreshSoon = () => { clearTimeout(refreshT); refreshT = setTimeout(() => refresh(), 140); };
+
+function setAnswer(text) {
+  const box = $("#answerBox");
+  if (!text) { box.className = "empty"; box.textContent = "The Narrator's explanation will appear here, with every id linked to its card."; return; }
+  box.className = "";
+  box.innerHTML = esc(text).replace(/\[([^\]]+)\]/g, (_, id) => `<button class="ref" data-ref="${id}">${id}</button>`);
+}
+function typeAnswer(text) {
+  if (RM || !S.loaded) return setAnswer(text);
+  const box = $("#answerBox"); box.className = ""; let i = 0;
+  const step = () => { i = Math.min(text.length, i + 3); box.textContent = text.slice(0, i); if (i < text.length) setTimeout(step, 12); else setAnswer(text); };
+  step();
+}
+$("#answerBox").addEventListener("click", (e) => {
+  const ref = e.target.closest(".ref")?.dataset.ref; if (!ref) return;
+  for (const p of ["dep", "commit", "past", "svc", "inc", "person"]) if (S.nodes.has(`${p}:${ref}`)) return highlight(`${p}:${ref}`);
+});
+
+function renderCase(snap) {
+  const inc = snap.incident;
+  $("#caseTitle").textContent = `${inc.id}: ${inc.title}`;
+  if (inc.answer && inc.answer !== S.answerShown) { S.answerShown = inc.answer; typeAnswer(inc.answer); }
+  $("#resolveBtn").disabled = !(inc.status === "open" && inc.answer);
+  if (!S.running && inc.solveMs != null) { showClock(inc.solveMs, false); $("#clockNote").textContent = noteFor(inc.solvePath); }
+}
+const noteFor = (p) => (p === "memory" ? "Answered from memory" : p === "full" ? "Full investigation, no memory" : p?.startsWith("sim-") ? "Simulated agents" : "Time to an answer");
+
+function showClock(ms, run) { const c = $("#clock"); c.textContent = mmss(ms); c.classList.toggle("run", run); }
+function startClock() { S.startAt = performance.now(); clearInterval(S.timer); S.timer = setInterval(() => showClock(performance.now() - S.startAt, true), 100); }
+function stopClock(ms) { clearInterval(S.timer); showClock(ms, false); }
+
+async function loadRuns() {
+  const runs = await api("/api/runs");
+  const ul = $("#runs"); ul.innerHTML = "";
+  for (const r of runs) { const li = document.createElement("li"); li.innerHTML = `<span>${esc(r.id)} ${esc(r.title)}</span><span>${mmss(r.ms)} ${r.path?.includes("memory") ? "memory" : "full"}${r.path?.startsWith("sim-") ? " (sim)" : ""}</span>`; ul.appendChild(li); }
+  const cmp = $("#compare");
+  let full, mem;
+  for (const r of runs) { if (r.path?.endsWith("full")) { full = r; mem = null; } else if (r.path?.endsWith("memory") && full && !mem) mem = r; }
+  if (full && mem) { cmp.style.display = "block"; cmp.innerHTML = `First time <b>${mmss(full.ms)}</b> &rarr; same kind of incident again <b>${mmss(mem.ms)}</b>${full.path.startsWith("sim-") || mem.path.startsWith("sim-") ? " (simulated)" : ""}`; }
+  else cmp.style.display = "none";
+}
+
+/* ---------------- log + drawer ---------------- */
+const logEl = $("#log");
+function logRow(cls, html, onClick) {
+  const d = document.createElement("div"); d.className = "row " + cls; d.innerHTML = html;
+  if (onClick) { d.classList.add("res"); d.addEventListener("click", onClick); }
+  logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight; return d;
+}
+const chip = (a) => `<span class="who" style="color:${AGENT_COLOR[a] || "#d9ccb2"}">${esc(a)}</span>`;
+function drawer(title, parts) {
+  const dr = $("#drawer");
+  $("#drawerBody").innerHTML = `<h3>${esc(title)}</h3>` + parts.map((p) => p.pre ? `<div class="k">${esc(p.k)}</div><pre>${esc(p.pre)}</pre>` : `<div class="sub" style="font-size:15px;color:#e9dfc9;margin-top:4px">${esc(p.text)}</div>`).join("");
+  dr.style.visibility = "visible"; gsap.to(dr, { y: 0, yPercent: 0, duration: D(0.3), ease: "power3.out" });
+}
+$("#drawer .close").addEventListener("click", () => gsap.to("#drawer", { yPercent: 130, y: 0, duration: D(0.25), onComplete: () => { $("#drawer").style.visibility = "hidden"; } }));
+addEventListener("keydown", (e) => { if (e.key === "Escape") $("#drawer .close").click(); });
+const cypherParts = (cypher, params) => cypher ? [{ k: "The Cypher behind it", pre: cypher.trim() }, ...(params && Object.keys(params).length ? [{ k: "Parameters", pre: JSON.stringify(params, null, 2) }] : [])] : [];
+
+function openNode(id) {
+  const rec = S.nodes.get(id); if (!rec) return; const n = rec.n, d = n.data || {};
+  highlight(id);
+  if (n.type === "evidence") {
+    let c = {}; try { c = JSON.parse(d.cypher || "{}"); } catch {}
+    return drawer(`${n.label} ${d.stance === "contradicts" ? "contradicts" : "supports"} this hypothesis${d.recalled ? " (recalled from memory)" : ""}`, [{ text: n.sub }, ...cypherParts(c.cypher, c.params)]);
+  }
+  if (n.type === "hypothesis") return drawer(`${n.label}: ${Math.round((d.confidence || 0) * 100)}% confidence, ${d.status}`, [{ text: n.sub }, { text: "Confidence is computed in the graph from the evidence strings attached to this card. No agent can set it." }, ...(d.explanation ? [{ text: d.explanation }] : [])]);
+  drawer(n.label, [{ text: n.sub || n.type }]);
+}
+
+/* ---------------- events ---------------- */
+function onEvent(ev) {
+  if (ev.type === "phase") {
+    if (ev.reset) { S.incident = null; clearBoard(); logEl.innerHTML = ""; stopClock(0); $("#clockNote").textContent = "Time to an answer"; loadRuns(); return; }
+    if (ev.armed) { if (S.incident !== ev.armed) { S.incident = ev.armed; clearBoard(); } $("#run").disabled = false; stopClock(0); $("#clockNote").textContent = "Time to an answer"; refresh(!S.loaded); }
+    if (ev.start) { S.incident = ev.incident; S.running = true; S.answerShown = ""; setAnswer(""); $("#run").disabled = true; if (S.loaded) startClock(); if (ev.cold) $("#cold").checked = true; refresh(!S.loaded); }
+    if (ev.done) { S.running = false; stopClock(ev.ms); $("#clockNote").textContent = noteFor(ev.path); $("#run").disabled = false; refresh(); loadRuns(); }
+    if (ev.resolved) { refresh(); loadRuns(); }
+    logRow("phase", esc(ev.message));
+    return;
+  }
+  if (ev.type === "tool") return logRow("", `${chip(ev.agent)}${esc(ev.name)}(${esc(JSON.stringify(ev.input)).slice(0, 90)})`);
+  if (ev.type === "result") {
+    if (ev.name) logRow("res", `${chip(ev.agent)}&rarr; ${esc(ev.summary)}${ev.write ? ' <span class="w">pinned</span>' : ""}`, () => drawer(`${ev.agent}: ${ev.name || "recall"}`, [{ text: ev.summary }, ...cypherParts(ev.cypher, ev.params), ...(ev.data ? [{ k: "Result", pre: JSON.stringify(ev.data, null, 2).slice(0, 5000) }] : [])]));
+    else logRow("res", `${chip(ev.agent)}&rarr; ${esc(ev.summary)}`, () => drawer(`${ev.agent}`, [{ text: ev.summary }, ...cypherParts(ev.cypher, ev.params)]));
+    if (ev.write && S.loaded) refreshSoon();
+    return;
+  }
+  if (ev.type === "text") return logRow("text", `${chip(ev.agent)}${esc(ev.text)}`);
+  if (ev.type === "error") { logRow("err", `${chip(ev.agent)}${esc(ev.message)}`); if (ev.fatal) { S.running = false; stopClock(0); $("#run").disabled = false; toast(ev.message, 12000); } }
+}
+
+function connectEvents() {
+  const es = new EventSource("/api/events");
+  es.onmessage = (m) => { try { onEvent(JSON.parse(m.data)); } catch (e) { console.error(e); } };
+}
+
+/* ---------------- controls ---------------- */
+async function init() {
+  const cfg = S.cfg = await api("/api/config");
+  const sel = $("#scenario");
+  cfg.scenarios.forEach((s, i) => { const o = document.createElement("option"); o.value = i; o.textContent = `${s.label} (${s.note})`; sel.appendChild(o); });
+  if (!cfg.llm) { $("#sim").checked = true; toast("No GEMINI_API_KEY is set, so runs use the simulated agents.", 9000); }
+  const people = await api("/api/people");
+  $("#who").innerHTML = people.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  $("#cold").title = "Skip the memory shortcut and run the full investigation";
+  $("#sim").title = "Scripted agents, no model calls. Clearly labelled in the run history.";
+  S.running = cfg.running;
+  const incs = await api("/api/incidents");
+  connectEvents();
+  setTimeout(async () => {
+    S.loaded = true;
+    if (!S.incident && incs[0]) S.incident = incs[0].id;
+    if (S.incident) { await refresh(true); $("#run").disabled = S.running || !S.snap; }
+    loadRuns();
+  }, 600);
+}
+
+async function fire() {
+  const s = S.cfg.scenarios[$("#scenario").value];
+  try { await api("/api/arm", { scenario: s.key, variant: s.variant }); } catch (e) { toast(e.message); }
+}
+$("#fire").addEventListener("click", fire);
+$("#emptyFire").addEventListener("click", fire);
+$("#run").addEventListener("click", async () => {
+  if (!S.incident) return;
+  try { await api("/api/solve", { incident: S.incident, cold: $("#cold").checked, simulate: $("#sim").checked }); } catch (e) { toast(e.message); }
+});
+$("#resolveBtn").addEventListener("click", () => { $("#resolveForm").classList.toggle("open"); });
+$("#resolveForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try { await api("/api/resolve", { incident: S.incident, who: $("#who").value, text: $("#fixText").value }); $("#resolveForm").classList.remove("open"); $("#fixText").value = ""; } catch (err) { toast(err.message); }
+});
+$("#clear").addEventListener("click", async () => { try { await api("/api/reset", {}); } catch (e) { toast(e.message); } });
+
+init().catch((e) => toast("Could not reach the server: " + e.message, 20000));
+</script>
+</body>
+</html>

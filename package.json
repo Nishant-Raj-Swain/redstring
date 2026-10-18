@@ -1,0 +1,29 @@
+{
+  "name": "red-string",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "up": "docker compose up -d",
+    "schema": "tsx src/schema.ts",
+    "seed": "tsx src/seed.ts",
+    "seed:dry": "tsx src/seed.ts --dry",
+    "arm": "tsx src/arm.ts",
+    "verify": "tsx src/verify.ts",
+    "typecheck": "tsc --noEmit",
+    "solve": "tsx src/solve.ts",
+    "resolve": "tsx src/resolve.ts",
+    "smoke": "tsx src/smoke.ts",
+    "ui": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.30.0",
+    "falkordb": "^6.2.0",
+    "gsap": "^3.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
